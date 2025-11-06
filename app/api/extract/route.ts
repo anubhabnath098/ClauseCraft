@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import pdf from 'pdf-parse';
+import * as pdf from 'pdf-parse';
 import { extractClausesFromText } from '@/lib/parser';
 
 export async function POST(request: Request) {
@@ -19,7 +19,8 @@ export async function POST(request: Request) {
     const buffer = await response.arrayBuffer();
 
     // Parse the PDF buffer
-    const data = await pdf(buffer);
+    // @ts-ignore
+    const data = await pdf.default(buffer);
 
     // Extract clauses using our heuristic
     const clauses = extractClausesFromText(data.text);
