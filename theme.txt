@@ -1,0 +1,59 @@
+1. Overall Theme:
+
+Style: Modern, minimalist, and clean dark mode.
+
+Feel: Professional and focused, but with a vibrant, high-tech personality.
+
+Key Elements: Deep gray backgrounds, high-contrast text, and a signature multi-color gradient for branding and accents.
+
+2. Color Palette:
+
+Primary Background: A very dark charcoal or off-black. This is crucial—it's not pure black ($#000000$). Using a dark gray makes the shadows and surfaces feel softer and more natural.
+
+Try: Hex: #1F1F1F or Hex: #202124
+
+Surface/Container Backgrounds: A slightly lighter gray, used for cards, chat bubbles, dialog boxes, and input fields. This creates a subtle sense of depth and hierarchy.
+
+Try: Hex: #303031 or Hex: #2A2A2A
+
+Primary Text: Off-white or very light gray. Pure white ($#FFFFFF$) can be too harsh on a dark background and cause eye strain.
+
+Try: Hex: #E1E3E3 or Hex: #F0F0F0
+
+Secondary Text: A medium, muted gray for labels, hints, and less important information.
+
+Try: Hex: #BDC1C6 or Hex: #A0A0A0
+
+3. The Signature "Gemini" Gradient (The Accent):
+
+This is the most important part. It's not a simple two-color gradient. It's a vibrant, multi-color blend that feels energetic.
+
+Colors to blend:
+
+Bright Blue / Electric Blue: (e.g., Hex: #4A80FF or Hex: #1A73E8)
+
+Light Blue / Sky Blue: (e.g., Hex: #89B1FF or Hex: #73C3FF)
+
+Purple / Magenta: (e.g., Hex: #AD58F3 or Hex: #C58AFF)
+
+How to use it:
+
+Logos & Icons: The primary use for the brand logo.
+
+Active States: As a highlight for the current active navigation item.
+
+Loading Animations: Used in spinners, progress bars, or "thinking" pulses.
+
+Headers/Borders: Can be used as a subtle border on the top of the page or a full-color header for a hero section.
+
+Direction: The gradient often flows diagonally to feel more dynamic.
+
+4. Interactive Elements:
+
+Links: Use a single, bright, and accessible color from the gradient palette, typically the Light Blue ($#89B1FF$), to ensure they are easy to read and click.
+
+Buttons:
+
+Primary (Call to Action): Can use the full gradient as a background (though this can be overpowering) or a solid fill of the Bright Blue ($#4A80FF$).
+
+Secondary: A simple outlined button or a fill using the "Surface" gray ($#303031$).
