@@ -12,17 +12,17 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Invalid request body: clauseIds array is required" }, { status: 400 });
     }
 
-    // Ensure all IDs are numbers for Prisma query
-    const numericClauseIds = clauseIds.map(id => parseInt(id)).filter(id => !isNaN(id));
+    // clauseIds are now strings (vector_ids)
+    const stringClauseIds = clauseIds.filter(id => typeof id === 'string' && id.length > 0);
 
-    if (numericClauseIds.length === 0) {
-      return NextResponse.json({ error: "No valid numeric clause IDs provided" }, { status: 400 });
+    if (stringClauseIds.length === 0) {
+      return NextResponse.json({ error: "No valid string clause IDs provided" }, { status: 400 });
     }
 
     const clauses = await prisma.clause.findMany({
       where: {
-        id: {
-          in: numericClauseIds,
+        vector_id: { // Query by vector_id
+          in: stringClauseIds,
         },
       },
     });

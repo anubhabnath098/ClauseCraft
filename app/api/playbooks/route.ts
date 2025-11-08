@@ -17,6 +17,7 @@ export async function POST(request: Request) {
         name,
         clauses: {
           create: clauses.map((clause: any) => ({
+            vector_id: clause.vector_id, // Include the vector_id
             clause_type: clause.clause_type,
             clause_text: clause.clause_text,
           })),

@@ -6,7 +6,7 @@ import { ThinkingAnimation } from "@/components/thinking-animation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Zap } from "lucide-react";
-import { extractClausesFromUrl } from "@/lib/api";
+// import { extractClausesFromUrl } from "@/lib/api"; // No longer needed
 import type { Clause } from "@/lib/api";
 
 export default function CreatePlaybookPage() {
@@ -40,17 +40,21 @@ export default function CreatePlaybookPage() {
       }
 
       const { publicUrls } = await uploadResponse.json();
+      const pdfUrl = publicUrls[0]; // Assuming one file upload for now
 
-      // 2. Extract clauses from each PDF by calling the FastAPI backend
-      const extractionPromises = publicUrls.map((url: string) =>
-        extractClausesFromUrl(url)
-      );
+      // 2. Call the new API route to process PDF, generate clauses with IDs, and save the playbook
+      const processAndStoreResponse = await fetch("/api/process-and-store-pdf", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ pdfUrl, playbookName: "My New Playbook" }), // You can make the playbook name dynamic
+      });
 
-      const extractionResults = await Promise.all(extractionPromises);
+      if (!processAndStoreResponse.ok) {
+        throw new Error("Failed to process PDF and create playbook");
+      }
 
-      // 3. Aggregate clauses
-      const allClauses = extractionResults.flat();
-      setClauses(allClauses);
+      const newPlaybook = await processAndStoreResponse.json();
+      setClauses(newPlaybook.clauses);
     } catch (err: any) {
       setError(err.message || "An unexpected error occurred.");
     } finally {
@@ -58,28 +62,7 @@ export default function CreatePlaybookPage() {
     }
   };
 
-  const savePlaybook = async (clauses: Clause[]) => {
-    // Placeholder function to save clauses
-    console.log("Saving playbook with clauses:", clauses);
-    try {
-      const response = await fetch("/api/playbooks", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: "My Playbook", clauses }),
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to save playbook");
-      }
-
-      const result = await response.json();
-      console.log("Playbook saved:", result);
-      alert("Playbook saved successfully!");
-    } catch (error) {
-      console.error("Failed to save playbook:", error);
-      alert("Failed to save playbook.");
-    }
-  };
+  // savePlaybook function is removed as its functionality is now integrated into /api/process-and-store-pdf
 
   return (
     <main className="min-h-screen bg-background text-foreground p-6 md:p-12">
@@ -87,24 +70,18 @@ export default function CreatePlaybookPage() {
         <div className="space-y-3">
           <div className="flex items-center gap-2">
             <Zap className="h-8 w-8 text-primary" />
-            <h1 className="text-4xl md:text-5xl font-semi-bold">
+            <h1 className="text-4xl md:text-5xl font-bold">
               <span className="gradient-gemini-text">Create your playbook</span>
             </h1>
           </div>
           <p className="text-muted-foreground text-lg max-w-2xl">
-            Upload your gold-standard contracts to create a playbook of your
-            preferred clauses.
+            Upload your gold-standard contracts to create a playbook of your preferred clauses.
           </p>
         </div>
 
         <div className="rounded-xl bg-card/50 border border-border p-8">
-          <h2 className="text-xl font-semibold text-foreground mb-6">
-            Upload Documents
-          </h2>
-          <UploadZone
-            onFilesSelected={handleFilesSelected}
-            isLoading={isLoading}
-          />
+          <h2 className="text-xl font-semibold text-foreground mb-6">Upload Documents</h2>
+          <UploadZone onFilesSelected={handleFilesSelected} isLoading={isLoading} />
         </div>
 
         {isLoading && (
@@ -122,21 +99,13 @@ export default function CreatePlaybookPage() {
 
         {clauses.length > 0 && (
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
+            <CardHeader>
               <CardTitle>Extracted Clauses</CardTitle>
-              <Button onClick={() => savePlaybook(clauses)}>
-                Save Playbook
-              </Button>
             </CardHeader>
             <CardContent className="space-y-4">
               {clauses.map((clause, index) => (
-                <div
-                  key={index}
-                  className="p-4 border rounded-lg bg-background"
-                >
-                  <p className="text-sm font-bold text-primary">
-                    {clause.clause_type}
-                  </p>
+                <div key={index} className="p-4 border rounded-lg bg-background">
+                  <p className="text-sm font-bold text-primary">{clause.clause_type}</p>
                   <p className="mt-1">{clause.clause_text}</p>
                 </div>
               ))}

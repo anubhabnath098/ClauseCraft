@@ -20,6 +20,7 @@ model Playbook {
 
 model Clause {
   id          Int      @id @default(autoincrement())
+  vector_id   String   @unique // The ID from the vector DB
   playbook    Playbook @relation(fields: [playbookId], references: [id])
   playbookId  Int
   clause_type String
