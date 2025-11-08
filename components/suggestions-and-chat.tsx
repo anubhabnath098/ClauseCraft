@@ -197,7 +197,7 @@ export function SuggestionsAndChat({ suggestions, clauses, sessionId }: Suggesti
     setIsLoading(true)
 
     try {
-      const response = await fetch("/api/chat", {
+      const response = await fetch("http://localhost:8000/chat", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

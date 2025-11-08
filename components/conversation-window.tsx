@@ -123,30 +123,30 @@ export function ConversationWindow({ style, context, gender, onNewCall }: Conver
   }, [isBotSpeaking])
 
   const getBotResponse = async (userText: string) => {
-    try {
-      const result = await getNegotiationResponse(userText, style, context, gender)
+  try {
+    const result = await getNegotiationResponse(userText, style, context, gender)
 
-      // Add bot message
-      const botMessage: Message = {
-        id: `bot-${Date.now()}`,
-        speaker: "bot",
-        text: result.response,
-        timestamp: new Date(),
-      }
-      setMessages((prev) => [...prev, botMessage])
+    const botMessage: Message = {
+      id: `bot-${Date.now()}`,
+      speaker: "bot",
+      text: result.response,
+      timestamp: new Date(),
+    }
+    setMessages((prev) => [...prev, botMessage])
 
-      if ("speechSynthesis" in window) {
-        synthRef.current = speakText(result.response, gender, () => {
-          setIsBotSpeaking(false)
-        })
-      } else {
+    if ("speechSynthesis" in window) {
+      synthRef.current = speakText(result.response, gender, () => {
         setIsBotSpeaking(false)
-      }
-    } catch (error) {
-      console.error("Error getting bot response:", error)
+      })
+    } else {
       setIsBotSpeaking(false)
     }
+  } catch (error) {
+    console.error("Error getting bot response:", error)
+    setIsBotSpeaking(false)
   }
+}
+
 
   const handleEndCall = () => {
     if (recognitionRef.current && isRecognitionRunningRef.current) {
