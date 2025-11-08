@@ -21,7 +21,6 @@ export default function ChatWindow({ chat, onSendMessage }: ChatWindowProps) {
     setIsLoading(true)
     const userInput = input
     setInput("")
-
     await onSendMessage(userInput)
     setIsLoading(false)
   }
@@ -34,9 +33,8 @@ export default function ChatWindow({ chat, onSendMessage }: ChatWindowProps) {
           <div className="h-full flex flex-col items-center justify-center space-y-8">
             <div className="text-center space-y-4">
               <h1 className="text-3xl font-bold text-foreground mb-2">Welcome to ClauseCraft AI</h1>
-              <p className="text-muted-foreground">Ask questions about any clause in your organization</p>
+              <p className="text-muted-foreground">Start chatting about your contract clauses below.</p>
             </div>
-            {/* Input Form - Placed above middle when no chat */}
             <form onSubmit={handleSubmit} className="flex gap-2 w-full max-w-2xl px-4">
               <input
                 type="text"
@@ -44,33 +42,34 @@ export default function ChatWindow({ chat, onSendMessage }: ChatWindowProps) {
                 onChange={(e) => setInput(e.target.value)}
                 placeholder="Type your message..."
                 disabled={isLoading}
-                className="flex-1 px-4 py-2 rounded-lg bg-input text-foreground placeholder-muted-foreground border border-border focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-50"
+                className="flex-1 px-4 py-2 rounded-lg bg-input text-foreground border border-border focus:outline-none focus:ring-2 focus:ring-ring"
               />
-              <Button
-                type="submit"
-                disabled={isLoading || !input.trim()}
-                className="bg-primary text-primary-foreground hover:bg-accent hover:text-accent-foreground disabled:opacity-50"
-              >
+              <Button type="submit" disabled={isLoading || !input.trim()}>
                 {isLoading ? "Sending..." : "Send"}
               </Button>
             </form>
           </div>
         ) : (
           chat.messages.map((message) => (
-            <div key={message.id} className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}>
+            <div
+              key={message.id}
+              className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}
+            >
               <div
                 className={`max-w-2xl px-4 py-2 rounded-lg ${
-                  message.role === "user" ? "bg-primary text-primary-foreground" : "bg-card text-card-foreground"
+                  message.role === "user"
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-card text-card-foreground border border-border"
                 }`}
               >
-                <p className="text-sm">{message.content}</p>
+                <p className="text-sm whitespace-pre-line">{message.content}</p>
               </div>
             </div>
           ))
         )}
       </div>
 
-      {/* Input Form - Only shown at bottom when chat has messages */}
+      {/* Input shown at bottom if chat exists */}
       {chat && chat.messages.length > 0 && (
         <div className="border-t border-border p-4 bg-background">
           <form onSubmit={handleSubmit} className="flex gap-2">
@@ -80,13 +79,9 @@ export default function ChatWindow({ chat, onSendMessage }: ChatWindowProps) {
               onChange={(e) => setInput(e.target.value)}
               placeholder="Type your message..."
               disabled={isLoading}
-              className="flex-1 px-4 py-2 rounded-lg bg-input text-foreground placeholder-muted-foreground border border-border focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-50"
+              className="flex-1 px-4 py-2 rounded-lg bg-input text-foreground border border-border focus:outline-none focus:ring-2 focus:ring-ring"
             />
-            <Button
-              type="submit"
-              disabled={isLoading || !input.trim()}
-              className="bg-primary text-primary-foreground hover:bg-accent hover:text-accent-foreground disabled:opacity-50"
-            >
+            <Button type="submit" disabled={isLoading || !input.trim()}>
               {isLoading ? "Sending..." : "Send"}
             </Button>
           </form>
