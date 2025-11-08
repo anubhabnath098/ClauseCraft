@@ -169,21 +169,7 @@ export function QuickResponseTab({ response, setResponse }: QuickResponseTabProp
     }
   }
 
-  const handleDownloadSuggestions = () => {
-    const content =
-      `CONTRACT QUICK REVIEW - SUGGESTIONS AND FLAGS\n\nSession ID: ${response.sessionId}\nGenerated: ${new Date().toLocaleDateString()}\n\n${"=".repeat(50)}\n\n` +
-      response.suggestions
-        .map((s) => `CLAUSE: ${s.clause}\nPRIORITY: ${s.priority.toUpperCase()}\n${s.suggestion}\n\n`)
-        .join("")
-
-    const element = document.createElement("a")
-    element.setAttribute("href", "data:text/plain;charset=utf-8," + encodeURIComponent(content))
-    element.setAttribute("download", `quick-suggestions-${response.sessionId}.txt`)
-    element.style.display = "none"
-    document.body.appendChild(element)
-    element.click()
-    document.body.removeChild(element)
-  }
+  
 
   const handleNewChat = () => {
     setResponse({
@@ -322,7 +308,7 @@ export function QuickResponseTab({ response, setResponse }: QuickResponseTabProp
             <Button
               onClick={handleNewChat}
               variant="outline"
-              className="border-border text-accent hover:bg-muted bg-transparent"
+              className="border-border text-accent hover:bg-muted bg-transparent hover:text-accent"
             >
               New Scan
             </Button>
@@ -332,7 +318,6 @@ export function QuickResponseTab({ response, setResponse }: QuickResponseTabProp
             suggestions={response.suggestions}
             clauses={response.clauses}
             sessionId={response.sessionId}
-            onDownload={handleDownloadSuggestions}
           />
         </div>
       )}
