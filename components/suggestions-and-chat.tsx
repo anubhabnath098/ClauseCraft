@@ -1,12 +1,32 @@
 "use client"
 
 import { useState, useRef, useEffect } from "react"
-import { Download, Send, Mic, Volume2, MessageSquare, FileText, Loader, ChevronDown } from "lucide-react"
+import {
+  Download,
+  Send,
+  Mic,
+  Volume2,
+  MessageSquare,
+  FileText,
+  Loader,
+  ChevronDown,
+  TrendingUp,
+} from "lucide-react"
 import { sendChatMessage } from "@/lib/dummy-apis"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { cn } from "@/lib/utils"
+import { NegotiationStyleModal } from "./negotiation-style-modal"
+import { ConversationWindow } from "./conversation-window"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import { Packer, Paragraph, TextRun, Document } from "docx"
+import { saveAs } from "file-saver"
 
 interface Suggestion {
   clause: string
@@ -29,12 +49,12 @@ interface SuggestionsAndChatProps {
   suggestions: Suggestion[]
   clauses: Clause[]
   sessionId: string | null
-  onDownload: () => void
 }
 
 type ViewType = "suggestions" | "questions" | "clauses"
 
-export function SuggestionsAndChat({ suggestions, clauses, sessionId, onDownload }: SuggestionsAndChatProps) {
+export function SuggestionsAndChat({ suggestions, clauses, sessionId }: SuggestionsAndChatProps) {
+  // Existing states
   const [activeView, setActiveView] = useState<ViewType>("suggestions")
   const [isRecording, setIsRecording] = useState(false)
   const [isSpeechEnabled, setIsSpeechEnabled] = useState(false)
@@ -46,6 +66,49 @@ export function SuggestionsAndChat({ suggestions, clauses, sessionId, onDownload
   const chatEndRef = useRef<HTMLDivElement>(null)
   const recognitionRef = useRef<any>(null)
 
+  // Negotiation integration states
+  const [showNegotiationModal, setShowNegotiationModal] = useState(false)
+  const [negotiationState, setNegotiationState] = useState<{
+    style: "aggressive" | "mildly_aggressive" | "friendly"
+    context: string
+    gender: "male" | "female"
+  } | null>(null)
+
+  const handleDownloadTxt = () => {
+    const text = suggestions.map((s) => `${s.clause}\n${s.suggestion}`).join("\n\n")
+    const blob = new Blob([text], { type: "text/plain;charset=utf-8" })
+    saveAs(blob, `suggestions-${Date.now()}.txt`)
+  }
+
+  const handleDownloadDocx = () => {
+    const doc = new Document({
+      sections: [
+        {
+          properties: {},
+          children: suggestions.map(
+            (s) =>
+              new Paragraph({
+                children: [
+                  new TextRun({
+                    text: s.clause,
+                    bold: true,
+                  }),
+                  new TextRun({
+                    text: `\n${s.suggestion}`,
+                  }),
+                ],
+              })
+          ),
+        },
+      ],
+    })
+
+    Packer.toBlob(doc).then((blob) => {
+      saveAs(blob, `suggestions-${Date.now()}.docx`)
+    })
+  }
+
+  // Speech recognition setup
   useEffect(() => {
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
     if (SpeechRecognition) {
@@ -157,8 +220,39 @@ export function SuggestionsAndChat({ suggestions, clauses, sessionId, onDownload
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" })
   }, [chatMessages])
 
+  // Negotiation handling
+  const handleStartNegotiation = (
+    style: "aggressive" | "mildly_aggressive" | "friendly",
+    context: string,
+    gender: "male" | "female",
+  ) => {
+    setNegotiationState({ style, context, gender })
+    setShowNegotiationModal(false)
+  }
+
+  const handleNewCall = () => {
+    setNegotiationState(null)
+    setShowNegotiationModal(true)
+  }
+
+  // If negotiation active, show conversation window
+  if (negotiationState) {
+    return (
+      <ConversationWindow
+        style={negotiationState.style}
+        context={negotiationState.context}
+        gender={negotiationState.gender}
+        onNewCall={handleNewCall}
+      />
+    )
+  }
+
   return (
     <div className="space-y-4">
+      {showNegotiationModal && (
+        <NegotiationStyleModal onStart={handleStartNegotiation} onCancel={() => setShowNegotiationModal(false)} />
+      )}
+
       <div className="flex gap-2 flex-wrap">
         <Button
           onClick={() => setActiveView("suggestions")}
@@ -201,7 +295,7 @@ export function SuggestionsAndChat({ suggestions, clauses, sessionId, onDownload
         </Button>
       </div>
 
-      {/* Suggestions View */}
+      {/* SUGGESTIONS VIEW */}
       {activeView === "suggestions" && (
         <div className="space-y-4">
           <div className="flex items-center justify-between">
@@ -209,17 +303,24 @@ export function SuggestionsAndChat({ suggestions, clauses, sessionId, onDownload
               <span>Suggestions & Flags</span>
               <span className="text-sm text-muted-foreground">({suggestions.length})</span>
             </h3>
-            <Button
-              onClick={onDownload}
-              className="bg-accent hover:bg-accent/90 text-accent-foreground flex items-center gap-2"
-              size="sm"
-            >
-              <Download className="h-4 w-4" />
-              Download
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  className="bg-accent hover:bg-accent/90 text-accent-foreground flex items-center gap-2"
+                  size="sm"
+                >
+                  <Download className="h-4 w-4" />
+                  Download
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent>
+                <DropdownMenuItem onClick={handleDownloadTxt}>Download as TXT</DropdownMenuItem>
+                <DropdownMenuItem onClick={handleDownloadDocx}>Download as DOCX</DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
 
-          <div className="max-h-96 overflow-y-scroll pr-2 space-y-3 [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-muted [&::-webkit-scrollbar-thumb]:bg-border [&::-webkit-scrollbar-thumb]:rounded-full">
+          <div className="max-h-96 overflow-y-scroll pr-2 space-y-3">
             {suggestions.length === 0 ? (
               <Card className="p-4 text-center border-border bg-card/50">
                 <p className="text-sm text-muted-foreground">No suggestions available</p>
@@ -230,10 +331,7 @@ export function SuggestionsAndChat({ suggestions, clauses, sessionId, onDownload
                   <div className="flex items-start justify-between gap-3 mb-2">
                     <h4 className="font-semibold text-foreground">{suggestion.clause}</h4>
                     <span
-                      className={cn(
-                        "px-2 py-1 rounded text-xs font-medium border",
-                        priorityColors[suggestion.priority],
-                      )}
+                      className={cn("px-2 py-1 rounded text-xs font-medium border", priorityColors[suggestion.priority])}
                     >
                       {suggestion.priority.charAt(0).toUpperCase() + suggestion.priority.slice(1)}
                     </span>
@@ -243,10 +341,20 @@ export function SuggestionsAndChat({ suggestions, clauses, sessionId, onDownload
               ))
             )}
           </div>
+
+          {/* Add Negotiation button here */}
+          <div className="flex flex-col sm:flex-row gap-3 pt-4 justify-center">
+            <Button
+              onClick={() => setShowNegotiationModal(true)}
+              className="bg-primary text-primary-foreground hover:bg-primary/90"
+            >
+              Start Negotiation
+            </Button>
+          </div>
         </div>
       )}
 
-      {/* Questions View */}
+      {/* QUESTIONS VIEW */}
       {activeView === "questions" && (
         <div className="space-y-4">
           <h3 className="text-lg font-semibold text-foreground flex items-center gap-2">
@@ -314,25 +422,12 @@ export function SuggestionsAndChat({ suggestions, clauses, sessionId, onDownload
             >
               <Send className="h-4 w-4" />
             </Button>
-            <Button
-              onClick={() => setIsSpeechEnabled(!isSpeechEnabled)}
-              variant={isSpeechEnabled ? "default" : "outline"}
-              className={cn(
-                "gap-2",
-                isSpeechEnabled
-                  ? "bg-primary hover:bg-primary/90 text-primary-foreground"
-                  : "border-border text-foreground hover:bg-muted",
-              )}
-              size="icon"
-              title="Toggle speech output"
-            >
-              <Volume2 className="h-4 w-4" />
-            </Button>
+            
           </div>
         </div>
       )}
 
-      {/* Extracted Clauses View */}
+      {/* CLAUSES VIEW */}
       {activeView === "clauses" && (
         <div className="space-y-4">
           <div className="flex items-center justify-between">
@@ -340,17 +435,24 @@ export function SuggestionsAndChat({ suggestions, clauses, sessionId, onDownload
               <span>Extracted Clauses</span>
               <span className="text-sm text-muted-foreground">({clauses.length})</span>
             </h3>
-            <Button
-              onClick={onDownload}
-              className="bg-accent hover:bg-accent/90 text-accent-foreground flex items-center gap-2"
-              size="sm"
-            >
-              <Download className="h-4 w-4" />
-              Download
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  className="bg-accent hover:bg-accent/90 text-accent-foreground flex items-center gap-2"
+                  size="sm"
+                >
+                  <Download className="h-4 w-4" />
+                  Download
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent>
+                <DropdownMenuItem onClick={handleDownloadTxt}>Download as TXT</DropdownMenuItem>
+                <DropdownMenuItem onClick={handleDownloadDocx}>Download as DOCX</DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
 
-          <div className="max-h-96 overflow-y-scroll pr-2 space-y-3 [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-muted [&::-webkit-scrollbar-thumb]:bg-border [&::-webkit-scrollbar-thumb]:rounded-full">
+          <div className="max-h-96 overflow-y-scroll pr-2 space-y-3">
             {clauses.length === 0 ? (
               <Card className="p-4 text-center border-border bg-card/50">
                 <p className="text-sm text-muted-foreground">No clauses extracted</p>
