@@ -1,10 +1,11 @@
+
 # GenAI FastAPI Backend API Specification for ClauseCraft
 
 This document outlines the API endpoints and data structures that the ClauseCraft Next.js frontend expects from the GenAI FastAPI backend.
 
 ## 1. Process PDF and Generate Clauses
 
-This new endpoint is responsible for processing an entire PDF document, extracting clauses using an LLM, generating unique IDs for each clause, creating vector embeddings, and storing them in a vector database. It then returns the extracted clauses with their generated IDs.
+This endpoint is responsible for processing an entire PDF document, extracting clauses using an LLM, generating unique IDs for each clause, creating vector embeddings, and storing them in a vector database. It then returns the extracted clauses with their generated IDs.
 
 *   **Endpoint:** `/process-pdf-and-generate-clauses`
 *   **Method:** `POST`
@@ -40,92 +41,41 @@ This new endpoint is responsible for processing an entire PDF document, extracti
     *   `clause_type` (string): The heading or type of the clause, as identified by the LLM.
     *   `clause_text` (string): The full text of the clause, without the heading, as identified by the LLM.
 
-## 2. Find Similar Clauses
+## 2. Review Contract with LLM
 
-This endpoint is responsible for finding relevant clauses from the playbook that are similar to the clauses from a new, incoming contract.
+This endpoint is the core of the review feature. It takes a PDF of a new contract, extracts its clauses, compares them to the playbook clauses in the vector DB, and generates suggestions.
 
-*   **Endpoint:** `/find-similar-clauses`
+*   **Endpoint:** `/review-contract-llm`
 *   **Method:** `POST`
 *   **Request Body:**
-    *   A JSON object with a single key, `clauses`, which is an array of `Clause` objects.
+    *   A JSON object with a single key, `pdf_url`, which is the public URL of the PDF document to be reviewed.
 
     ```json
     {
-      "clauses": [
-        {
-          "clause_type": "Governing Law",
-          "clause_text": "This Agreement shall be governed by and construed in accordance with the laws of the State of California."
-        },
-        {
-          "clause_type": "Confidentiality",
-          "clause_text": "Each party agrees to keep confidential all information disclosed by the other party."
-        }
-      ]
+      "pdf_url": "https://example.com/path/to/your/new-contract.pdf"
     }
     ```
-
-*   **`Clause` Object Schema:**
-    *   `clause_type` (string): The heading or type of the clause.
-    *   `clause_text` (string): The full text of the clause.
 
 *   **Expected Output:**
-    *   A JSON object with a single key, `clause_ids`, which is an array of strings. Each string is the `vector_id` of a similar clause from the playbook stored in the database.
-    *   The backend should use a vector similarity search (e.g., using Pinecone or Weaviate) to find the most relevant `vector_id`s.
+    *   A JSON array of `Suggestion` objects.
 
     ```json
-    {
-      "clause_ids": ["uuid-123-abc", "uuid-456-def", "uuid-789-ghi"]
-    }
-    ```
-
-## 3. Generate Suggestions
-
-This endpoint is the core of the review feature. It takes a single clause from the incoming contract and a list of similar clauses from the playbook, and it should return an AI-generated suggestion.
-
-*   **Endpoint:** `/generate-suggestions`
-*   **Method:** `POST`
-*   **Request Body:**
-    *   A JSON object with two keys: `incoming_clause` and `playbook_clauses`.
-
-    ```json
-    {
-      "incoming_clause": {
-        "clause_type": "Governing Law",
-        "clause_text": "This Agreement shall be governed by and construed in accordance with the laws of the State of California."
-      },
-      "playbook_clauses": [
+    [
         {
-          "vector_id": "uuid-123-abc",
-          "clause_type": "Governing Law",
-          "clause_text": "This agreement shall be governed by the laws of the State of Delaware."
+            "clause_type": "Governing Law",
+            "incoming_text": "This Agreement shall be governed by and construed in accordance with the laws of the State of California.",
+            "suggestion": "Change the governing law from California to Delaware to align with company policy.",
+            "severity": "Major",
+            "rationale": "The company's standard playbook requires all contracts to be governed by the laws of the State of Delaware for consistency and legal predictability."
         },
         {
-          "vector_id": "uuid-456-def",
-          "clause_type": "Jurisdiction",
-          "clause_text": "The parties agree to the exclusive jurisdiction of the courts of the State of Delaware."
+            "clause_type": "Confidentiality",
+            "incoming_text": "Each party agrees to keep confidential all information disclosed by the other party.",
+            "suggestion": "Consider adding a specific time limit for the confidentiality obligation.",
+            "severity": "Minor",
+            "rationale": "The current confidentiality clause is perpetual, which may be overly broad. A time limit of 3-5 years is standard for this type of agreement."
         }
-      ]
-    }
-    ```
-
-*   **`incoming_clause` Object Schema:**
-    *   `clause_type` (string): The type of the incoming clause.
-    *   `clause_text` (string): The text of the incoming clause.
-
-*   **`playbook_clauses` Array Schema:**
-    *   An array of `Clause` objects from the playbook, including their `vector_id`.
-
-*   **Expected Output:**
-    *   A single JSON object representing a `Suggestion`.
-
-    ```json
-    {
-      "clause_type": "Governing Law",
-      "incoming_text": "This Agreement shall be governed by and construed in accordance with the laws of the State of California.",
-      "suggestion": "Change the governing law from California to Delaware to align with company policy.",
-      "severity": "Major",
-      "rationale": "The company's standard playbook requires all contracts to be governed by the laws of the State of Delaware for consistency and legal predictability."
-    }
+    ]
     ```
 
 *   **`Suggestion` Object Schema:**

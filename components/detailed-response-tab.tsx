@@ -2,24 +2,24 @@
 
 import type React from "react"
 
-import { useState, useRef } from "react"
+import { useState } from "react" // Removed useRef
 import { Upload, AlertCircle } from "lucide-react"
 import { ThinkingAnimation } from "./thinking-animation"
 import { SuggestionsAndChat } from "./suggestions-and-chat"
-import { processPdfContract } from "@/lib/dummy-apis"
+// import { processPdfContract } from "@/lib/dummy-apis" // Removed
 import { Button } from "@/components/ui/button"
-import { Card } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { UploadZone } from "@/components/upload-zone"; // New import
+import type { Clause } from "@/lib/api"; // New import
 
-interface Clause {
-  title: string
-  content: string
-  riskLevel: "low" | "medium" | "high"
-}
+const FASTAPI_URL = process.env.NEXT_PUBLIC_GENAI_FASTAPI_URL || "http://localhost:8001"; // New constant
 
 interface Suggestion {
-  clause: string
-  suggestion: string
-  priority: "low" | "medium" | "high"
+  clause_type: string;
+  incoming_text: string;
+  suggestion: string;
+  severity: "Minor" | "Moderate" | "Major";
+  rationale: string;
 }
 
 interface ResponseData {
@@ -34,13 +34,13 @@ interface DetailedResponseTabProps {
 }
 
 export function DetailedResponseTab({ response, setResponse }: DetailedResponseTabProps) {
-  const [isThinking, setIsThinking] = useState(false)
+  const [isLoading, setIsLoading] = useState(false) // Changed from isThinking
   const [showNewChatWarning, setShowNewChatWarning] = useState(false)
-  const fileInputRef = useRef<HTMLInputElement>(null)
+  // const fileInputRef = useRef<HTMLInputElement>(null) // Removed
 
-  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0]
-    if (!file) return
+  const handleFilesSelected = async (files: File[]) => { // Renamed from handleFileUpload
+    const file = files?.[0]
+    if (!file) return;
 
     if (response.sessionId) {
       setShowNewChatWarning(true)
@@ -51,20 +51,55 @@ export function DetailedResponseTab({ response, setResponse }: DetailedResponseT
   }
 
   const processFile = async (file: File) => {
-    setIsThinking(true)
+    setIsLoading(true) // Changed from setIsThinking
 
     try {
-      const apiResponse = await processPdfContract(file)
+      // 1. Upload files to get public URLs
+      const formData = new FormData();
+      formData.append("files", file);
+      const uploadResponse = await fetch("/api/upload", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!uploadResponse.ok) {
+        throw new Error("File upload failed");
+      }
+
+      const { publicUrls } = await uploadResponse.json();
+      const pdfUrl = publicUrls[0]; // Assuming one file upload for now
+
+      // 2. Call the new API route to review the contract with LLM
+      const reviewResponse = await fetch("/api/review-contract-with-llm", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ pdfUrl }),
+      });
+
+      if (!reviewResponse.ok) {
+        throw new Error("Failed to get suggestions");
+      }
+
+      const suggestions: Suggestion[] = await reviewResponse.json();
+
+      // For now, we don't have incoming clauses from this flow, so we'll use a placeholder
+      const incomingClauses: Clause[] = suggestions.map(s => ({
+        clause_type: s.clause_type,
+        clause_text: s.incoming_text,
+      }));
+
+
       setResponse({
-        clauses: apiResponse.clauses,
-        suggestions: apiResponse.suggestions,
-        sessionId: apiResponse.sessionId,
+        clauses: incomingClauses, // Update with actual extracted clauses
+        suggestions: suggestions,
+        sessionId: "mock-session-" + Date.now(), // Generate a new session ID
       })
-      localStorage.setItem("contractSessionId", apiResponse.sessionId)
-    } catch (error) {
+      localStorage.setItem("contractSessionId", "mock-session-" + Date.now()) // Update session ID
+    } catch (error: any) {
       console.error("Error processing PDF:", error)
+      // Handle error display
     } finally {
-      setIsThinking(false)
+      setIsLoading(false) // Changed from setIsThinking
     }
   }
 
@@ -76,12 +111,10 @@ export function DetailedResponseTab({ response, setResponse }: DetailedResponseT
     })
     localStorage.removeItem("contractSessionId")
     setShowNewChatWarning(false)
-    if (fileInputRef.current) {
-      fileInputRef.current.value = ""
-    }
+    // if (fileInputRef.current) { // Removed
+    //   fileInputRef.current.value = ""
+    // }
   }
-
-  
 
   return (
     <div className="space-y-6">
@@ -110,27 +143,15 @@ export function DetailedResponseTab({ response, setResponse }: DetailedResponseT
       {!response.sessionId && (
         <Card className="border-border p-8 text-center">
           <div className="flex flex-col items-center gap-4">
-            <div className="p-4 rounded-full bg-accent/20">
-              <Upload className="h-8 w-8 text-accent" />
-            </div>
-            <h2 className="text-xl font-semibold text-foreground">Upload Contract PDF</h2>
-            <p className="text-sm text-muted-foreground max-w-sm">
-              Upload a contract document to get detailed analysis with clause extraction and suggestions
-            </p>
-            <input ref={fileInputRef} type="file" accept=".pdf" onChange={handleFileUpload} className="hidden" />
-            <Button
-              onClick={() => fileInputRef.current?.click()}
-              className="bg-primary hover:bg-primary/90 text-primary-foreground mt-4"
-            >
-              Choose PDF File
-            </Button>
+            {/* Replace existing file upload UI with UploadZone */}
+            <UploadZone onFilesSelected={handleFilesSelected} isLoading={isLoading} />
           </div>
         </Card>
       )}
 
-      {isThinking && <ThinkingAnimation isVisible={true} />}
+      {isLoading && <ThinkingAnimation isVisible={true} />}
 
-      {response.sessionId && !isThinking && (
+      {response.sessionId && !isLoading && ( // Changed from isThinking
         <div className="space-y-6">
           <div className="flex items-center justify-between p-4 rounded-lg bg-card border border-border">
             <div>
