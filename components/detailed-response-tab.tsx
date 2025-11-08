@@ -15,11 +15,9 @@ import type { Clause } from "@/lib/api"; // New import
 const FASTAPI_URL = process.env.NEXT_PUBLIC_GENAI_FASTAPI_URL || "http://localhost:8001"; // New constant
 
 interface Suggestion {
-  clause_type: string;
-  incoming_text: string;
+  clause: string;
   suggestion: string;
-  severity: "Minor" | "Moderate" | "Major";
-  rationale: string;
+  priority: "low" | "medium" | "high";
 }
 
 interface ResponseData {
@@ -34,11 +32,10 @@ interface DetailedResponseTabProps {
 }
 
 export function DetailedResponseTab({ response, setResponse }: DetailedResponseTabProps) {
-  const [isLoading, setIsLoading] = useState(false) // Changed from isThinking
+  const [isLoading, setIsLoading] = useState(false)
   const [showNewChatWarning, setShowNewChatWarning] = useState(false)
-  // const fileInputRef = useRef<HTMLInputElement>(null) // Removed
 
-  const handleFilesSelected = async (files: File[]) => { // Renamed from handleFileUpload
+  const handleFilesSelected = async (files: File[]) => {
     const file = files?.[0]
     if (!file) return;
 
@@ -51,7 +48,7 @@ export function DetailedResponseTab({ response, setResponse }: DetailedResponseT
   }
 
   const processFile = async (file: File) => {
-    setIsLoading(true) // Changed from setIsThinking
+    setIsLoading(true)
 
     try {
       // 1. Upload files to get public URLs
@@ -67,10 +64,10 @@ export function DetailedResponseTab({ response, setResponse }: DetailedResponseT
       }
 
       const { publicUrls } = await uploadResponse.json();
-      const pdfUrl = publicUrls[0]; // Assuming one file upload for now
+      const pdfUrl = publicUrls[0];
 
-      // 2. Call the new API route to review the contract with LLM
-      const reviewResponse = await fetch("/api/review-contract-with-llm", {
+      // 2. Call the API route to review the contract
+      const reviewResponse = await fetch("/api/review-contract", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ pdfUrl }),
@@ -80,29 +77,17 @@ export function DetailedResponseTab({ response, setResponse }: DetailedResponseT
         throw new Error("Failed to get suggestions");
       }
 
-      const suggestions: Suggestion[] = await reviewResponse.json();
+      const responseData: ResponseData = await reviewResponse.json();
 
-      // For now, we don't have incoming clauses from this flow, so we'll use a placeholder
-      const incomingClauses: Clause[] = suggestions.map(s => ({
-        clause_type: s.clause_type,
-        clause_text: s.incoming_text,
-      }));
-
-
-      setResponse({
-        clauses: incomingClauses, // Update with actual extracted clauses
-        suggestions: suggestions,
-        sessionId: "mock-session-" + Date.now(), // Generate a new session ID
-      })
-      localStorage.setItem("contractSessionId", "mock-session-" + Date.now()) // Update session ID
+      setResponse(responseData)
+      localStorage.setItem("contractSessionId", responseData.sessionId || "")
     } catch (error: any) {
       console.error("Error processing PDF:", error)
       // Handle error display
     } finally {
-      setIsLoading(false) // Changed from setIsThinking
+      setIsLoading(false)
     }
   }
-
   const handleNewChat = () => {
     setResponse({
       clauses: [],

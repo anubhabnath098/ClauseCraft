@@ -1,93 +1,67 @@
-
 import { NextResponse } from "next/server";
 
-const NEXT_APP_URL = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
-
-interface Clause {
-  id?: number;
-  clause_type: string;
-  clause_text: string;
-}
-
-interface Suggestion {
-  clause_type: string;
-  incoming_text: string;
-  suggestion: string;
-  severity: "Minor" | "Moderate" | "Major";
-  rationale: string;
-}
+const FASTAPI_URL = process.env.FASTAPI_URL || "http://127.0.0.1:8000";
 
 export async function POST(request: Request) {
   try {
-    const { clauses: incomingClauses } = await request.json();
+    const { pdfUrl } = await request.json();
+    console.log("📄 Received PDF URL for review:", pdfUrl);
 
-    if (!incomingClauses || !Array.isArray(incomingClauses)) {
-      return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
+    if (!pdfUrl) {
+      return NextResponse.json(
+        { error: "No PDF URL provided" },
+        { status: 400 }
+      );
     }
 
-    // 1. Find similar clause IDs from the playbook (MOCKED)
-    // const similarClausesResponse = await fetch(`${NEXT_APP_URL}/api/find-similar-clauses`, {
-    //   method: "POST",
-    //   headers: { "Content-Type": "application/json" },
-    //   body: JSON.stringify({ clauses: incomingClauses }),
-    // });
+    // ✅ Construct proper JSON payload
+    const payload = {
+      url: pdfUrl,
+      raw_text: "",
+      top_k: 2,
+      use_llm_contradiction_check: true,
+    };
 
-    // if (!similarClausesResponse.ok) {
-    //   throw new Error("Failed to find similar clauses");
-    // }
+    // ✅ Send JSON directly (no FormData)
+    const response = await fetch(`${FASTAPI_URL}/analyze_contract/`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+    });
 
-    // const { similarClauseIds } = await similarClausesResponse.json();
-    const similarClauseIds = ["1", "2", "3"]; // Mock data
+    // --- Error Handling ---
+    if (!response.ok) {
+      let errorBody: any = {};
+      try {
+        errorBody = await response.json();
+      } catch {
+        const text = await response.text();
+        console.error("❌ Backend returned non-JSON error:", text);
+        throw new Error(`Backend returned ${response.status}: ${text}`);
+      }
 
-    // 2. Retrieve the full text of the similar clauses (MOCKED)
-    // const playbookClausesResponse = await fetch(`${NEXT_APP_URL}/api/clauses-by-ids`, {
-    //   method: "POST",
-    //   headers: { "Content-Type": "application/json" },
-    //   body: JSON.stringify({ clauseIds: similarClauseIds }),
-    // });
+      console.error("❌ Backend returned error JSON:", errorBody);
 
-    // if (!playbookClausesResponse.ok) {
-    //   throw new Error("Failed to retrieve playbook clauses");
-    // }
+      const detail =
+        typeof errorBody.detail === "string"
+          ? errorBody.detail
+          : JSON.stringify(errorBody.detail || errorBody);
 
-    // const playbookClauses: Clause[] = await playbookClausesResponse.json();
-    const playbookClauses: Clause[] = [
-      { id: 1, clause_type: "Governing Law", clause_text: "This agreement shall be governed by the laws of the State of Delaware." },
-      { id: 2, clause_type: "Confidentiality", clause_text: "The parties shall maintain the confidentiality of all information disclosed." },
-      { id: 3, clause_type: "Limitation of Liability", clause_text: "In no event shall either party be liable for any consequential damages." },
-    ]; // Mock data
-
-    // 3. For each incoming clause, call the LLM to get suggestions
-    const suggestions: Suggestion[] = [];
-    for (const incomingClause of incomingClauses) {
-      // In a real implementation, you would find the relevant playbook clauses for this specific incoming clause
-      // and send them to the LLM. For now, we'll just send the incoming clause and a placeholder for the playbook clauses.
-
-      // MOCK CALL to the GenAI FastAPI backend
-      const suggestion = await getSuggestionFromLLM(incomingClause, playbookClauses);
-      suggestions.push(suggestion);
+      throw new Error(detail || "Failed to analyze contract");
     }
 
-    return NextResponse.json(suggestions);
-  } catch (error) {
-    console.error("Failed to review contract:", error);
-    return NextResponse.json({ error: "Failed to review contract" }, { status: 500 });
+    // ✅ Parse backend response
+    const data = await response.json();
+    console.log("✅ Contract analyzed successfully:", data);
+
+    return NextResponse.json(data);
+  } catch (error: any) {
+    console.error("🚨 Failed to review contract:", error.message || error);
+    return NextResponse.json(
+      { error: error.message || "Failed to review contract" },
+      { status: 500 }
+    );
   }
-}
-
-// Mock function to simulate calling the GenAI FastAPI backend
-async function getSuggestionFromLLM(incomingClause: Clause, playbookClauses: Clause[]): Promise<Suggestion> {
-  // In a real implementation, this would be a fetch call to your GenAI FastAPI backend
-  // For now, we'll just return a mock suggestion
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      resolve({
-        clause_type: incomingClause.clause_type,
-        incoming_text: incomingClause.clause_text,
-        suggestion: "This is a mock suggestion from the LLM. Consider revising this clause to better align with company standards.",
-        severity: "Moderate",
-        rationale: "This is a mock rationale. The playbook prefers different wording for this type of clause.",
-      });
-    }, 500);
-  });
 }

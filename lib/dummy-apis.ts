@@ -1,4 +1,5 @@
 // Dummy API responses for client-side processing
+import {Clause as Clause_generate} from './api'
 interface Clause {
   title: string
   content: string
@@ -214,3 +215,60 @@ export async function callDummyAPI(message: string, sessionId: string) {
     sessionId: sessionId || `session_${Date.now()}`,
   }
 }
+
+
+export async function generateClausesFromQuestionnaire(
+  answers: Record<string, string>,
+  playbookName: string,
+): Promise<Clause_generate[]> {
+  const questionsText = [
+    "What type of contract do you want this playbook to focus on?",
+    "What is the primary goal or objective of this contract?",
+    "Who are the parties involved and what roles do they play?",
+    "What are the payment or compensation terms you prefer?",
+    "How do you want liability or risk to be handled?",
+    "How should confidentiality and data protection be addressed?",
+    "What should be the grounds and procedure for termination?",
+    "How do you want disputes or conflicts to be resolved?",
+    "Are there any specific compliance, warranty, or service level expectations?",
+    "Do you want to include any additional clauses or special conditions?",
+  ]
+
+  const contextString = questionsText.map((q, idx) => `Q${idx + 1}: ${q}\nA: ${answers[idx] || ""}`).join("\n\n")
+
+  // TODO: Call your AI/LLM service to generate clauses based on the questionnaire answers
+  // For now, returning a mock response with generated clauses
+  return generateMockClauses(contextString, playbookName)
+}
+
+// Mock function to generate clauses - replace with actual AI service call
+function generateMockClauses(contextString: string, playbookName: string): Clause_generate[] {
+  // This is a placeholder. Replace with actual LLM call
+  return [
+    {
+      clause_type: "Parties",
+      clause_text: "This agreement is entered into between the parties as described in the questionnaire responses.",
+    },
+    {
+      clause_type: "Scope of Work",
+      clause_text:
+        "The primary objective and scope of work shall be as defined in the questionnaire answers regarding the contract goals.",
+    },
+    {
+      clause_type: "Payment Terms",
+      clause_text:
+        "Payment shall be structured according to the compensation preferences specified in the questionnaire responses.",
+    },
+    {
+      clause_type: "Liability and Risk",
+      clause_text:
+        "Each party's liability and risk allocation shall follow the framework specified in the questionnaire responses.",
+    },
+    {
+      clause_type: "Confidentiality",
+      clause_text:
+        "Confidentiality and data protection measures shall be implemented as per the requirements specified in the questionnaire.",
+    },
+  ]
+}
+
