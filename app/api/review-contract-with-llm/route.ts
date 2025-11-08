@@ -1,20 +1,7 @@
 
 import { NextResponse } from "next/server";
 
-const FASTAPI_URL = process.env.NEXT_PUBLIC_GENAI_FASTAPI_URL || "http://localhost:8001";
-
-interface Clause {
-  clause_type: string;
-  clause_text: string;
-}
-
-interface Suggestion {
-  clause_type: string;
-  incoming_text: string;
-  suggestion: string;
-  severity: "Minor" | "Moderate" | "Major";
-  rationale: string;
-}
+const FASTAPI_URL = process.env.NEXT_PUBLIC_FASTAPI_URL || "http://127.0.0.1:8000";
 
 export async function POST(request: Request) {
   try {
@@ -24,22 +11,24 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Invalid request body: pdfUrl is required" }, { status: 400 });
     }
 
-    // 1. Call the FastAPI backend to review the contract and get suggestions
-    const reviewResponse = await fetch(`${FASTAPI_URL}/review-contract-llm`, {
+    // Call the FastAPI backend to review the contract and get suggestions
+    const reviewResponse = await fetch(`${FASTAPI_URL}/upload-contract`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ pdf_url: pdfUrl }),
     });
 
     if (!reviewResponse.ok) {
-      throw new Error("Failed to review contract with LLM");
+      const errorData = await reviewResponse.json();
+      console.error("FastAPI error:", errorData);
+      throw new Error(errorData.detail || "Failed to get suggestions from backend");
     }
 
-    const suggestions: Suggestion[] = await reviewResponse.json();
+    const suggestions = await reviewResponse.json();
 
     return NextResponse.json(suggestions);
-  } catch (error) {
+  } catch (error: any) {
     console.error("Failed to review contract:", error);
-    return NextResponse.json({ error: "Failed to review contract" }, { status: 500 });
+    return NextResponse.json({ error: error.message || "Failed to review contract" }, { status: 500 });
   }
 }
