@@ -45,6 +45,7 @@ export async function POST(request: Request) {
 
   try {
     const publicUrls = await Promise.all(uploadPromises);
+    console.log('Uploaded file URLs:', publicUrls);
     return NextResponse.json({ publicUrls });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });

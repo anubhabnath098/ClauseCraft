@@ -1,68 +1,82 @@
-"use client";
+"use client"
 
-import { useState } from "react";
-import { UploadZone } from "@/components/upload-zone";
-import { ThinkingAnimation } from "@/components/thinking-animation";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Zap } from "lucide-react";
-// import { extractClausesFromUrl } from "@/lib/api"; // No longer needed
-import type { Clause } from "@/lib/api";
-
+import { useState } from "react"
+import { UploadZone } from "@/components/upload-zone"
+import { PlaybookQuestionnaire } from "@/components/playbook-questionnaire"
+import { ThinkingAnimation } from "@/components/thinking-animation"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Zap } from "lucide-react"
+import { generateClausesFromQuestionnaire } from "@/lib/dummy-apis"
+import { Clause } from "@/lib/api"
 export default function CreatePlaybookPage() {
-  const [isLoading, setIsLoading] = useState(false);
-  const [clauses, setClauses] = useState<Clause[]>([]);
-  const [error, setError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false)
+  const [clauses, setClauses] = useState<Clause[]>([])
+  const [error, setError] = useState<string | null>(null)
+  const [mode, setMode] = useState<"upload" | "questionnaire">("upload")
 
   const handleFilesSelected = async (files: File[]) => {
     if (files.length === 0) {
-      return;
+      return
     }
 
-    setIsLoading(true);
-    setError(null);
-    setClauses([]);
+    setIsLoading(true)
+    setError(null)
+    setClauses([])
 
-    const formData = new FormData();
+    const formData = new FormData()
     files.forEach((file) => {
-      formData.append("files", file);
-    });
+      formData.append("files", file)
+    })
 
     try {
       // 1. Upload files to get public URLs
       const uploadResponse = await fetch("/api/upload", {
         method: "POST",
         body: formData,
-      });
+      })
 
       if (!uploadResponse.ok) {
-        throw new Error("File upload failed");
+        throw new Error("File upload failed")
       }
 
-      const { publicUrls } = await uploadResponse.json();
-      const pdfUrl = publicUrls[0]; // Assuming one file upload for now
+      const { publicUrls } = await uploadResponse.json()
+      const pdfUrl = publicUrls[0] // Assuming one file upload for now
 
       // 2. Call the new API route to process PDF, generate clauses with IDs, and save the playbook
       const processAndStoreResponse = await fetch("/api/process-and-store-pdf", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ pdfUrl, playbookName: "My New Playbook" }), // You can make the playbook name dynamic
-      });
+      })
 
       if (!processAndStoreResponse.ok) {
-        throw new Error("Failed to process PDF and create playbook");
+        throw new Error("Failed to process PDF and create playbook")
       }
 
-      const newPlaybook = await processAndStoreResponse.json();
-      setClauses(newPlaybook.clauses);
+      const newPlaybook = await processAndStoreResponse.json()
+      setClauses(newPlaybook.clauses)
     } catch (err: any) {
-      setError(err.message || "An unexpected error occurred.");
+      setError(err.message || "An unexpected error occurred.")
     } finally {
-      setIsLoading(false);
+      setIsLoading(false)
     }
-  };
+  }
 
-  // savePlaybook function is removed as its functionality is now integrated into /api/process-and-store-pdf
+  const handleQuestionnaireSubmit = async (answers: Record<string, string>) => {
+    setIsLoading(true)
+    setError(null)
+    setClauses([])
+
+    try {
+      const generatedClauses = await generateClausesFromQuestionnaire(answers, "Generated Playbook")
+      setClauses(generatedClauses)
+    } catch (err: any) {
+      setError(err.message || "An unexpected error occurred.")
+    } finally {
+      setIsLoading(false)
+    }
+  }
 
   return (
     <main className="min-h-screen bg-background text-foreground p-6 md:p-12">
@@ -79,10 +93,42 @@ export default function CreatePlaybookPage() {
           </p>
         </div>
 
-        <div className="rounded-xl bg-card/50 border border-border p-8">
-          <h2 className="text-xl font-semibold text-foreground mb-6">Upload Documents</h2>
-          <UploadZone onFilesSelected={handleFilesSelected} isLoading={isLoading} />
+        <div className="flex gap-3">
+          <Button
+            variant={mode === "upload" ? "default" : "outline"}
+            onClick={() => {
+              setMode("upload")
+              setClauses([])
+              setError(null)
+            }}
+          >
+            Upload Documents
+          </Button>
+          <Button
+            variant={mode === "questionnaire" ? "default" : "outline"}
+            onClick={() => {
+              setMode("questionnaire")
+              setClauses([])
+              setError(null)
+            }}
+          >
+            Generate Playbook
+          </Button>
         </div>
+
+        {mode === "upload" && (
+          <div className="rounded-xl bg-card/50 border border-border p-8">
+            <h2 className="text-xl font-semibold text-foreground mb-6">Upload Documents</h2>
+            <UploadZone onFilesSelected={handleFilesSelected} isLoading={isLoading} />
+          </div>
+        )}
+
+        {mode === "questionnaire" && (
+          <div className="rounded-xl bg-card/50 border border-border p-8">
+            <h2 className="text-xl font-semibold text-foreground mb-6">Answer Questions</h2>
+            <PlaybookQuestionnaire onSubmit={handleQuestionnaireSubmit} isLoading={isLoading} />
+          </div>
+        )}
 
         {isLoading && (
           <div className="rounded-xl bg-card/50 border border-border p-8">
@@ -114,5 +160,5 @@ export default function CreatePlaybookPage() {
         )}
       </div>
     </main>
-  );
+  )
 }

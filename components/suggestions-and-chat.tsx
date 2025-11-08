@@ -12,7 +12,7 @@ import {
   ChevronDown,
   TrendingUp,
 } from "lucide-react"
-import { sendChatMessage } from "@/lib/dummy-apis"
+
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -197,8 +197,15 @@ export function SuggestionsAndChat({ suggestions, clauses, sessionId }: Suggesti
     setIsLoading(true)
 
     try {
-      const response = await sendChatMessage(userMessage, sessionId)
-      setChatMessages((prev) => [...prev, { type: "ai", content: response.response }])
+      const response = await fetch("/api/chat", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ message: userMessage, sessionId }),
+      });
+      const data = await response.json();
+      setChatMessages((prev) => [...prev, { type: "ai", content: data.response }])
 
       if (isSpeechEnabled) {
         speakText(response.response)
